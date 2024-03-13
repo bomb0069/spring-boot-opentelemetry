@@ -1,0 +1,36 @@
+spring:
+  sleuth:
+    otel:
+      config:
+        trace-id-ratio-based: 1.0
+    sleuth:
+      otel:
+        exporter:
+          otlp:
+            endpoint: http://collector:4317
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - prometheus
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      group:
+        liveness:
+          include: "*"
+          exclude:
+            - db
+            - readinessState
+        readiness:
+          include: "*"
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true

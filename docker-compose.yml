@@ -1,0 +1,110 @@
+version: "4.0"
+
+services:
+  product-service:
+    build: ./product
+    ports:
+      - "8080:8080"
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=product,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_COMPRESSION=gzip
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318
+      - OTEL_EXPORTER_OTLP_HEADERS=uptrace-dsn=https://<token>@uptrace.dev/<project_id>
+      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=DELTA
+      - OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION=BASE2_EXPONENTIAL_BUCKET_HISTOGRAM
+
+  price-service:
+    build: ./price
+    ports:
+      - "8081:8080"
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=price,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_COMPRESSION=gzip
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318
+      - OTEL_EXPORTER_OTLP_HEADERS=uptrace-dsn=https://<token>@uptrace.dev/<project_id>
+      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=DELTA
+      - OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION=BASE2_EXPONENTIAL_BUCKET_HISTOGRAM
+
+  message-service:
+    build: ./message
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=message,service.version=1.0.0
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
+  #   ports:
+  #     - 5672:5672
+  #     - 15672:15672
+
+  # webapi:
+  #   build:
+  #     context: ../
+  #     dockerfile: ./telemetry/WebApi/Dockerfile
+  #   image: opentelemetry-example-webapi
+  #   environment:
+  #     - OTEL_RESOURCE_ATTRIBUTES=service.name=webapi,service.version=1.0.0
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - RABBITMQ_HOSTNAME=rabbitmq
+  #     - RABBITMQ_DEFAULT_USER=guest
+  #     - RABBITMQ_DEFAULT_PASS=guest
+  #     - ZIPKIN_HOSTNAME=host.docker.internal
+  #   ports:
+  #     - 5000:5000
+  #   depends_on:
+  #     - rabbitmq
+  #     # - zipkin
+
+  # workerservice:
+  #   build:
+  #     context: ./WorkerService
+  #   image: opentelemetry-example-workerservice
+  #   environment:
+  #     - OTEL_RESOURCE_ATTRIBUTES=service.name=workerservice,service.version=1.0.0
+  #     - DOTNET_ENVIRONMENT=Development
+  #     - RABBITMQ_HOSTNAME=rabbitmq
+  #     - RABBITMQ_DEFAULT_USER=guest
+  #     - RABBITMQ_DEFAULT_PASS=guest
+  #     - ZIPKIN_HOSTNAME=host.docker.internal
+  #   restart: on-failure
+  #   depends_on:
+  #     - rabbitmq
+  #     # - zipkin
+
+  collector:
+    image: otel/opentelemetry-collector:0.72.0
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger-service
+
+  jaeger-service:
+    image: jaegertracing/all-in-one:latest
+    # environment:
+    #   - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "14250"
+      # - "4317:4317"
+      # - "4318:4318"
+
+  zipkin-service:
+    image: openzipkin/zipkin
+    ports:
+      - 9411:9411
